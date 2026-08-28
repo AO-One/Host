@@ -30,10 +30,8 @@
   </div>
 
   <script>
-    // Dynamic URL check targeting port 5000 for local backend execution
-    const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? 'http://localhost:5000'
-      : 'https://your-live-backend-domain.com';
+    // Point directly to local Flask server on port 5000 regardless of host domain
+    const API_BASE_URL = 'http://localhost:5000';
 
     const chatMessages = document.getElementById('chatMessages');
     const chatForm = document.getElementById('chatForm');

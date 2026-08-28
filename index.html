@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HostGPT — One OS Brain</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 650px;
+      height: 80vh;
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    .chat-header {
+      background-color: #0f172a;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      font-size: 0.75rem;
+      background-color: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 1.25rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      background-color: #0f172a;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background-color: #2563eb;
+      color: #ffffff;
+      border-bottom-right-radius: 2px;
+    }
+
+    .message.ai {
+      align-self: flex-start;
+      background-color: #1e293b;
+      color: #f1f5f9;
+      border: 1px solid #334155;
+      border-bottom-left-radius: 2px;
+    }
+
+    .typing-indicator {
+      align-self: flex-start;
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      display: none;
+      gap: 4px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      background-color: #94a3b8;
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+
+    .dot:nth-child(1) { animation-delay: -0.32s; }
+    .dot:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    .chat-input-area {
+      padding: 1rem;
+      background-color: #1e293b;
+      border-top: 1px solid #334155;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .chat-input-area input {
+      flex: 1;
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      color: #ffffff;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      outline: none;
+      font-size: 0.95rem;
+    }
+
+    .chat-input-area input:focus {
+      border-color: #2563eb;
+    }
+
+    .chat-input-area button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .chat-input-area button:hover {
+      background-color: #1d4ed8;
+    }
+
+    .chat-input-area button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="chat-container">
+    <div class="chat-header">
+      <h1>HostGPT — One OS Engine</h1>
+      <span class="status-badge" id="statusBadge">Checking...</span>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div class="message ai">Hello! I am your local PyTorch LLM engine. How can I help you today?</div>
+      <div class="typing-indicator" id="typingIndicator">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    </div>
+
+    <form class="chat-input-area" id="chatForm">
+      <input type="text" id="userInput" placeholder="Type a message..." autocomplete="off" required />
+      <button type="submit" id="sendBtn">Send</button>
+    </form>
+  </div>
+
+  <script>
+    // Dynamic URL check matching your local vs production setup
+    const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'http://localhost:8000'
+      : 'https://your-live-backend-domain.com';
+
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const typingIndicator = document.getElementById('typingIndicator');
+    const statusBadge = document.getElementById('statusBadge');
+
+    // Health check on load
+    async function checkBackendHealth() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/health`);
+        const data = await res.json();
+        if (data.status === 'online' || data.status === 'ok') {
+          statusBadge.textContent = 'Backend Online';
+        } else {
+          statusBadge.textContent = 'Degraded';
+          statusBadge.style.color = '#f59e0b';
+        }
+      } catch (err) {
+        statusBadge.textContent = 'Offline';
+        statusBadge.style.color = '#ef4444';
+        statusBadge.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+        statusBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+      }
+    }
+
+    function appendMessage(text, sender) {
+      const msgDiv = document.createElement('div');
+      msgDiv.classList.add('message', sender);
+      msgDiv.textContent = text;
+      
+      // Insert before typing indicator
+      chatMessages.insertBefore(msgDiv, typingIndicator);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const prompt = userInput.value.trim();
+      if (!prompt) return;
+
+      appendMessage(prompt, 'user');
+      userInput.value = '';
+      sendBtn.disabled = true;
+      typingIndicator.style.display = 'flex';
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: prompt,
+            system_prompt: 'You are the core AI engine for HostApps.',
+            max_tokens: 100
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          appendMessage(data.response, 'ai');
+        } else {
+          appendMessage(`Error: ${data.message || 'Unable to generate response.'}`, 'ai');
+        }
+      } catch (err) {
+        appendMessage('Network Error: Could not reach Flask server on port 8000.', 'ai');
+      } finally {
+        typingIndicator.style.display = 'none';
+        sendBtn.disabled = false;
+        userInput.focus();
+      }
+    });
+
+    checkBackendHealth();
+  </script>
+</body>
+</html>

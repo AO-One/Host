@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="indexstylesheet.css">
-  <title>Host</title>
+  <title>HostGPT — One OS Engine</title>
 </head>
 <body>
 
@@ -30,8 +30,11 @@
   </div>
 
   <script>
-    // Point directly to local Flask server on port 5000 regardless of host domain
-    const API_BASE_URL = 'http://localhost:5000';
+    // Automatically detects environment: uses local port 5000 when running locally, 
+    // and points to your live backend domain when hosted on GitHub Pages (https://ao-one.github.io/Host/)
+    const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:5000'
+      : 'https://your-live-backend-domain.com';
 
     const chatMessages = document.getElementById('chatMessages');
     const chatForm = document.getElementById('chatForm');
@@ -102,7 +105,7 @@
           appendMessage(`Error: ${data.message || 'Unable to generate response.'}`, 'ai');
         }
       } catch (err) {
-        appendMessage('Network Error: Could not reach Flask server on port 5000.', 'ai');
+        appendMessage(`Network Error: Could not reach backend server at ${API_BASE_URL}.`, 'ai');
       } finally {
         typingIndicator.style.display = 'none';
         sendBtn.disabled = false;
